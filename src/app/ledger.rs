@@ -7,14 +7,23 @@ use futures::lock::Mutex;
 use super::repository::{BookingRepository, AccountRepository};
 
 pub struct Ledger {
-    account_repo: Arc<dyn AccountRepository>,
+    account_repo: Arc<Mutex<dyn AccountRepository>>,
     booking_repo: Arc<Mutex<dyn BookingRepository>>,
+}
+
+impl Ledger {
+    pub fn new(
+        account_repo: Arc<Mutex<dyn AccountRepository>>,
+        booking_repo: Arc<Mutex<dyn BookingRepository>>,
+    ) -> Self {
+        Self { account_repo, booking_repo }
+    }
 }
 
 #[async_trait]
 impl AccountService for Ledger {
     async fn dump_accounts(&self) -> LedgerResult<Vec<AccountSummary>> {
-        self.account_repo.dump_accounts().await
+        self.account_repo.lock().await.dump_accounts().await
     }
 }
 

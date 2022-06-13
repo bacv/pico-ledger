@@ -23,10 +23,10 @@ impl InMemoryBookingRepository {
     async fn get_or_create_booking(&self, tx: Tx) -> LedgerResult<Booking> {
         let mut store = self.bookings.lock().await;
         match store.get(&tx.tx_id) {
-            Some(b) => Ok(b.clone()),
+            Some(b) => Ok(*b),
             None => {
                 // *Assuming* that negative amount is not allowed.
-                let amount = tx.amount.ok_or(booking_err("missing amount"))?.to_i64();
+                let amount = tx.amount.ok_or_else(|| booking_err("missing amount"))?.to_i64();
                 if amount < 0 {
                     return Err(booking_err("negative amount"));
                 }

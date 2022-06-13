@@ -1,8 +1,22 @@
+use std::{fmt::{self, Formatter, Display}, error::Error};
+
 #[derive(Debug)]
 pub enum LedgerErrorKind {
     DoesNotExist(String),
     RepositoryError(String),
     ServiceError(String),
+}
+
+impl Display for LedgerErrorKind {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LedgerErrorKind::DoesNotExist(msg) => {
+                write!(fmt, "{} does not exist", msg)
+            }
+            LedgerErrorKind::RepositoryError(msg) => write!(fmt, "Repository error: {}", msg),
+            LedgerErrorKind::ServiceError(msg) => write!(fmt, "Service error: {}", msg),
+        }
+    }
 }
 
 impl LedgerErrorKind {
@@ -32,5 +46,13 @@ impl LedgerError {
         &self.kind
     }
 }
+
+impl fmt::Display for LedgerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.kind)
+    }
+}
+
+impl Error for LedgerError {}
 
 pub type LedgerResult<T> = Result<T, LedgerError>;

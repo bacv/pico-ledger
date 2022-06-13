@@ -19,16 +19,16 @@ impl Account {
         }
     }
     pub fn is_locked(&self) -> bool {
-        return self.locked
+        self.locked
     }
     pub fn get_client_id(&self) -> u16 {
-        return self.id
+        self.id
     }
     pub fn get_available(&self) -> i64 {
-        return self.available
+        self.available
     }
     pub fn get_total(&self) -> i64 {
-        return self.available + self.held
+        self.available + self.held
     }
     pub fn hold(&mut self, amount: i64) {
         self.available -= amount;
@@ -75,7 +75,6 @@ impl From<&Account> for AccountSummary {
 #[cfg(test)]
 mod tests {
     use crate::dom::AccountSummary;
-    use crate::dom::{Tx, TxType};
 
     #[test]
     #[ignore]

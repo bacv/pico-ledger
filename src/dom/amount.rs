@@ -10,7 +10,7 @@ pub struct Amount(i64);
 
 impl Amount {
     pub fn to_i64(&self) -> i64 {
-        return self.0
+        self.0
     }
 }
 

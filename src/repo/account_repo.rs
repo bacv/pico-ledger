@@ -17,7 +17,7 @@ impl InMemoryAccountRepository {
     }
     async fn get_account(&self, client_id: u16) -> LedgerResult<Account> {
         let a = self.accounts.lock().await.get(&client_id)
-            .ok_or(LedgerError::doesnt_exist("account does not exist"))?.clone();
+            .ok_or_else(|| LedgerError::doesnt_exist("account does not exist"))?.clone();
 
         Ok(a)
     }
@@ -33,7 +33,7 @@ impl AccountRepository for InMemoryAccountRepository {
     async fn get_or_create_account(&mut self, client_id: u16) -> LedgerResult<Account>{
         let mut store = self.accounts.lock().await;
         let a = match store.get(&client_id) {
-            Some(a) => a.clone(),
+            Some(a) => *a,
             None => {
                 let a = Account::new(client_id);
                 store.insert(client_id, a);
@@ -95,7 +95,7 @@ impl AccountRepository for InMemoryAccountRepository {
     }
     async fn dump_accounts(&self) -> LedgerResult<Vec<AccountSummary>>{
         let store = self.accounts.lock().await;
-        return Ok(store.values().map(|a| AccountSummary::from(a)).collect());
+        return Ok(store.values().map(AccountSummary::from).collect());
     }
 }
 
