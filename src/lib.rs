@@ -3,15 +3,52 @@ use async_trait::async_trait;
 mod app;
 mod repo;
 
+#[derive(Clone, Copy)]
 pub struct Account {
-    pub id: u16,
-    pub available: f32,
-    pub held: f32,
-    pub total: f32,
-    pub locked: bool,
+    _id: u16,
+    available: f32,
+    held: f32,
+    total: f32,
+    locked: bool,
 }
 
-#[derive(PartialEq)]
+impl Account {
+    pub fn new(client_id: u16) -> Self {
+        Self {
+            _id: client_id,
+            available: 0.0,
+            held: 0.0,
+            total: 0.0,
+            locked: false,
+        }
+    }
+    pub fn is_locked(&self) -> bool {
+        return self.locked
+    }
+    pub fn hold(&mut self, amount: f32) {
+        self.available -= amount;
+        self.held += amount;
+    }
+    pub fn release(&mut self, amount: f32) {
+        self.held -= amount;
+        self.available += amount;
+    }
+    pub fn deposit(&mut self, amount: f32) {
+        self.available += amount;
+        self.total += amount;
+    }
+    pub fn withdraw(&mut self, amount: f32) {
+        self.available -= amount;
+        self.total -= amount;
+    }
+    pub fn withdraw_and_lock(&mut self, amount: f32) {
+        self.held -= amount;
+        self.total -= amount;
+        self.locked = true;
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub enum BookingState {
     Pristine,
     Normal,
@@ -22,10 +59,46 @@ pub enum BookingState {
 
 // Booking represents the state of a transaction.
 // A transaction that has been charged back or resolved gets locked.
+#[derive(Clone, Copy)]
 pub struct Booking {
-    pub tx_id: u32,
-    pub locked: bool,
-    pub state: BookingState,
+    _tx_id: u32,
+    client_id: u16,
+    amount: f32,
+    locked: bool,
+    state: BookingState,
+}
+
+impl Booking {
+    pub fn new(tx_id: u32, client_id: u16, amount: f32) -> Self {
+        Self {
+            _tx_id: tx_id,
+            client_id,
+            amount,
+            locked: false,
+            state: BookingState::Pristine,
+        }
+    }
+    pub fn set_state(&mut self, state: BookingState) -> &mut Self {
+        self.state = state;
+        self
+    }
+    pub fn set_state_and_lock(&mut self, state: BookingState) -> &mut Self {
+        self.set_state(state);
+        self.locked = true;
+        self
+    }
+    pub fn get_client_id(&self) -> u16 {
+        self.client_id
+    }
+    pub fn get_amount(&self) -> f32 {
+        self.amount
+    }
+    pub fn get_state(&self) -> BookingState {
+        self.state
+    }
+    pub fn is_locked(&self) -> bool {
+        self.locked
+    }
 }
 
 #[derive(Clone, Copy)]
