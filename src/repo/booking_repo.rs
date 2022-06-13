@@ -22,16 +22,19 @@ impl InMemoryBookingRepository {
     } 
     async fn get_or_create_booking(&self, tx: Tx) -> LedgerResult<Booking> {
         let mut store = self.bookings.lock().await;
-        let b = match store.get(&tx.tx_id) {
-            Some(b) => b.clone(),
+        match store.get(&tx.tx_id) {
+            Some(b) => Ok(b.clone()),
             None => {
-                let b = Booking::new(tx.tx_id, tx.client_id, tx.amount.ok_or(booking_err("missing amount"))?);
+                // *Assuming* that negative amount is not allowed.
+                let amount = tx.amount.ok_or(booking_err("missing amount"))?.to_i64();
+                if amount < 0 {
+                    return Err(booking_err("negative amount"));
+                }
+                let b = Booking::new(tx.tx_id, tx.client_id, amount);
                 store.insert(tx.tx_id, b);
-                b
+                Ok(b)
             },
-        };
-
-        Ok(b)
+        }
     }
     async fn update_booking(&mut self, tx_id: u32, booking: Booking) -> LedgerResult<()> {
         self.bookings.lock().await.insert(tx_id, booking);
@@ -132,7 +135,8 @@ fn wrapped_booking_err(msg: &str) -> Result<(), LedgerError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::repo::account_repo::InMemoryAccountRepository;
+    use crate::dom::Amount;
+use crate::repo::account_repo::InMemoryAccountRepository;
     use crate::dom::AccountSummary;
     use std::cmp::Ordering;
     use super::*;
@@ -142,68 +146,68 @@ mod tests {
         expected: Vec<AccountSummary>,
     }
 
-    struct CommonCases {}
+    struct CommonCases;
 
     impl CommonCases {
         pub fn new() -> HashMap<&'static str, TestCase> {
                 return HashMap::from([
                     ("booking_gets_locked", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Dispute, amount: None}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Resolve, amount: None}, true),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 10_0000, total: 10_0000, held: 0_0000, locked: false}
+                            AccountSummary{client: 1, available: 10_0000.into(), total: 10_0000.into(), held: 0_0000.into(), locked: false}
                         ]
                     }),
                     ("invalid_tx_1", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Dispute, amount: None}, true),
                             (Tx{tx_id: 0, client_id: 1, tx_type: TxType::Resolve, amount: None}, false),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 0_0000, total: 10_0000, held: 10_0000, locked: false}
+                            AccountSummary{client: 1, available: 0_0000.into(), total: 10_0000.into(), held: 10_0000.into(), locked: false}
                         ]
                     }),
                     ("invalid_tx_2", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Dispute, amount: None}, true),
                             (Tx{tx_id: 1, client_id: 2, tx_type: TxType::Resolve, amount: None}, false),
                         ],
                         expected: vec![
-                            AccountSummary{client: 2, available: 0_0000, total: 0_0000, held: 0_0000, locked: false},
-                            AccountSummary{client: 1, available: 0_0000, total: 10_0000, held: 10_0000, locked: false}
+                            AccountSummary{client: 2, available: 0_0000.into(), total: 0_0000.into(), held: 0_0000.into(), locked: false},
+                            AccountSummary{client: 1, available: 0_0000.into(), total: 10_0000.into(), held: 10_0000.into(), locked: false}
                         ]
                     }),
                     ("deposit_booking", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
-                            (Tx{tx_id: 2, client_id: 2, tx_type: TxType::Deposit, amount: Some(11_0000)}, true),
-                            (Tx{tx_id: 3, client_id: 3, tx_type: TxType::Deposit, amount: Some(12_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
+                            (Tx{tx_id: 2, client_id: 2, tx_type: TxType::Deposit, amount: Some(Amount::from(11_0000))}, true),
+                            (Tx{tx_id: 3, client_id: 3, tx_type: TxType::Deposit, amount: Some(Amount::from(12_0000))}, true),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 10_0000, total: 10_0000, held: 0_0000, locked: false},
-                            AccountSummary{client: 2, available: 11_0000, total: 11_0000, held: 0_0000, locked: false},
-                            AccountSummary{client: 3, available: 12_0000, total: 12_0000, held: 0_0000, locked: false},
+                            AccountSummary{client: 1, available: 10_0000.into(), total: 10_0000.into(), held: 0_0000.into(), locked: false},
+                            AccountSummary{client: 2, available: 11_0000.into(), total: 11_0000.into(), held: 0_0000.into(), locked: false},
+                            AccountSummary{client: 3, available: 12_0000.into(), total: 12_0000.into(), held: 0_0000.into(), locked: false},
                         ]
                     }),
                     ("tx_to_locked_account", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Dispute, amount: None}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Chargeback, amount: None}, true),
-                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Deposit, amount: Some(1_0000)}, false),
+                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(1_0000))}, false),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 0_0000, total: 0_0000, held: 0_0000, locked: true}
+                            AccountSummary{client: 1, available: 0_0000.into(), total: 0_0000.into(), held: 0_0000.into(), locked: true}
                         ]
                     }),
                     ("multiple_txs_w_same_id", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Dispute, amount: None}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Dispute, amount: None}, false),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Resolve, amount: None}, true),
@@ -212,62 +216,62 @@ mod tests {
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Chargeback, amount: None}, false),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 10_0000, total: 10_0000, held: 0_0000, locked: false}
+                            AccountSummary{client: 1, available: 10_0000.into(), total: 10_0000.into(), held: 0_0000.into(), locked: false}
                         ]
                     }),
                     ("withdraw_booking", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
-                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(5_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
+                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(Amount::from(5_0000))}, true),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 5_0000, total: 5_0000, held: 0_0000, locked: false}
+                            AccountSummary{client: 1, available: 5_0000.into(), total: 5_0000.into(), held: 0_0000.into(), locked: false}
                         ]
                     }),
                     ("dispute_booking", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
-                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Deposit, amount: Some(5_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
+                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(5_0000))}, true),
                             (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Dispute, amount: None}, true),
-                            (Tx{tx_id: 3, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(9_0000)}, true),
-                            (Tx{tx_id: 4, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(9_0000)}, false),
+                            (Tx{tx_id: 3, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(Amount::from(9_0000))}, true),
+                            (Tx{tx_id: 4, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(Amount::from(9_0000))}, false),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 1_0000, total: 6_0000, held: 5_0000, locked: false}
+                            AccountSummary{client: 1, available: 1_0000.into(), total: 6_0000.into(), held: 5_0000.into(), locked: false}
                         ]
                     }),
                     ("resolve_booking", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Dispute, amount: None}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Resolve, amount: None}, true),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 10_0000, total: 10_0000, held: 0_0000, locked: false}
+                            AccountSummary{client: 1, available: 10_0000.into(), total: 10_0000.into(), held: 0_0000.into(), locked: false}
                         ]
                     }),
                     ("chargeback_booking", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
-                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Deposit, amount: Some(11_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
+                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(11_0000))}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Dispute, amount: None}, true),
                             (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Chargeback, amount: None}, true),
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: 11_0000, total: 11_0000, held: 0_0000, locked: true}
+                            AccountSummary{client: 1, available: 11_0000.into(), total: 11_0000.into(), held: 0_0000.into(), locked: true}
                         ]
                     }),
                     ("negative_chargeback_booking", TestCase {
                         txs: vec![
-                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(10_0000)}, true),
-                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Deposit, amount: Some(11_0000)}, true),
-                            (Tx{tx_id: 3, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(20_0000)}, true),
+                            (Tx{tx_id: 1, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(10_0000))}, true),
+                            (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Deposit, amount: Some(Amount::from(11_0000))}, true),
+                            (Tx{tx_id: 3, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(Amount::from(20_0000))}, true),
                             (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Dispute, amount: None}, true), // available -10; held 11; total 1
-                            (Tx{tx_id: 4, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(1_0000)}, false), // fails because of negative available balance
+                            (Tx{tx_id: 4, client_id: 1, tx_type: TxType::Withdrawal, amount: Some(Amount::from(1_0000))}, false), // fails because of negative available balance
                             (Tx{tx_id: 2, client_id: 1, tx_type: TxType::Chargeback, amount: None}, true), // available -10; held 0; total -10
                         ],
                         expected: vec![
-                            AccountSummary{client: 1, available: -10_0000, total: -10_0000, held: 0_0000, locked: true}
+                            AccountSummary{client: 1, available: (-10_0000).into(), total: (-10_0000).into(), held: 0_0000.into(), locked: true}
                         ]
                     }),
                 ])
@@ -285,7 +289,7 @@ mod tests {
             tx_id: 1,
             client_id: 1,
             tx_type: TxType::Deposit,
-            amount: Some(10_0000),
+            amount: Some(Amount::from(10_0000)),
         };
         
         let (mut booking_repo, account_repo) = new_booking_account_repo_pair();
@@ -295,9 +299,9 @@ mod tests {
 
         let accounts = account_repo.lock().await.dump_accounts().await.unwrap();
         assert_eq!(tx.client_id, accounts[0].client);
-        assert_eq!(tx.amount, Some(accounts[0].available));
-        assert_eq!(tx.amount, Some(accounts[0].total));
-        assert_eq!(0_0000, accounts[0].held);
+        assert_eq!(tx.amount, Some(accounts[0].available.into()));
+        assert_eq!(tx.amount, Some(accounts[0].total.into()));
+        assert_eq!(Amount::from(0_0000), accounts[0].held);
         assert_eq!(false, accounts[0].locked);
     }
 

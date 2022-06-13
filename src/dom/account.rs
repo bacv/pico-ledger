@@ -1,3 +1,5 @@
+use crate::dom::Amount;
+use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Account {
@@ -48,12 +50,12 @@ impl Account {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct AccountSummary {
     pub client: u16,
-    pub available: i64,
-    pub held: i64,
-    pub total: i64,
+    pub available: Amount,
+    pub held: Amount,
+    pub total: Amount,
     pub locked: bool,
 }
 
@@ -61,10 +63,41 @@ impl From<&Account> for AccountSummary {
     fn from(a: &Account) -> Self {
         AccountSummary{
             client: a.id,
-            available: a.available,
-            held: a.held,
-            total: a.available + a.held,
+            available: a.available.into(),
+            held: a.held.into(),
+            total: (a.available + a.held).into(),
             locked: a.locked,
         } 
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::dom::AccountSummary;
+    use crate::dom::{Tx, TxType};
+
+    #[test]
+    #[ignore]
+    fn serialize_tx_csv() {
+        let cases: Vec<(&str, AccountSummary)> = vec![
+            ("client,available,held,total,locked
+1,  1.1,   1.0,    2.1, false
+", AccountSummary{client: 1, available: 1_1000.into(), held: 1_0000.into(), total: 2_1000.into(), locked: false}),
+        ];
+
+        for (expected, case) in cases.iter() {
+            let buf = Vec::new();
+            let mut wtr = csv::WriterBuilder::new()
+                .has_headers(true)
+                .double_quote(true)
+                .flexible(true)
+                .from_writer(buf);
+            wtr.serialize(case).unwrap();
+            wtr.flush().unwrap();
+
+            let data = String::from_utf8(wtr.into_inner().unwrap()).unwrap();
+            assert_eq!(expected.to_string(), data);
+        }
     }
 }
