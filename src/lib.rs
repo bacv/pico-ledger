@@ -6,8 +6,8 @@ mod repo;
 #[derive(Clone, Copy, Debug)]
 pub struct Account {
     id: u16,
-    available: f32,
-    held: f32,
+    available: i64,
+    held: i64,
     locked: bool,
 }
 
@@ -15,8 +15,8 @@ impl Account {
     pub fn new(client_id: u16) -> Self {
         Self {
             id: client_id,
-            available: 0.0,
-            held: 0.0,
+            available: 0,
+            held: 0,
             locked: false,
         }
     }
@@ -26,27 +26,27 @@ impl Account {
     pub fn get_client_id(&self) -> u16 {
         return self.id
     }
-    pub fn get_available(&self) -> f32 {
+    pub fn get_available(&self) -> i64 {
         return self.available
     }
-    pub fn get_total(&self) -> f32 {
+    pub fn get_total(&self) -> i64 {
         return self.available + self.held
     }
-    pub fn hold(&mut self, amount: f32) {
+    pub fn hold(&mut self, amount: i64) {
         self.available -= amount;
         self.held += amount;
     }
-    pub fn release(&mut self, amount: f32) {
+    pub fn release(&mut self, amount: i64) {
         self.held -= amount;
         self.available += amount;
     }
-    pub fn deposit(&mut self, amount: f32) {
+    pub fn deposit(&mut self, amount: i64) {
         self.available += amount;
     }
-    pub fn withdraw(&mut self, amount: f32) {
+    pub fn withdraw(&mut self, amount: i64) {
         self.available -= amount;
     }
-    pub fn withdraw_and_lock(&mut self, amount: f32) {
+    pub fn withdraw_and_lock(&mut self, amount: i64) {
         self.held -= amount;
         self.locked = true;
     }
@@ -55,9 +55,9 @@ impl Account {
 #[derive(Debug, PartialEq)]
 pub struct AccountSummary {
     pub client: u16,
-    pub available: f32,
-    pub held: f32,
-    pub total: f32,
+    pub available: i64,
+    pub held: i64,
+    pub total: i64,
     pub locked: bool,
 }
 
@@ -88,13 +88,13 @@ pub enum BookingState {
 pub struct Booking {
     _tx_id: u32,
     client_id: u16,
-    amount: f32,
+    amount: i64,
     locked: bool,
     state: BookingState,
 }
 
 impl Booking {
-    pub fn new(tx_id: u32, client_id: u16, amount: f32) -> Self {
+    pub fn new(tx_id: u32, client_id: u16, amount: i64) -> Self {
         Self {
             _tx_id: tx_id,
             client_id,
@@ -115,7 +115,7 @@ impl Booking {
     pub fn get_client_id(&self) -> u16 {
         self.client_id
     }
-    pub fn get_amount(&self) -> f32 {
+    pub fn get_amount(&self) -> i64 {
         self.amount
     }
     pub fn get_state(&self) -> BookingState {
@@ -140,7 +140,7 @@ pub struct Tx {
     pub tx_id: u32,
     pub client_id: u16,
     pub tx_type: TxType,
-    pub amount: Option<f32>,
+    pub amount: Option<i64>,
 }
 
 #[async_trait]

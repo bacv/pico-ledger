@@ -44,7 +44,7 @@ impl AccountRepository for LedgerAccountRepository {
 
         Ok(a)
     }
-    async fn hold(&mut self, client_id: u16, amount: f32) -> LedgerResult<()>{
+    async fn hold(&mut self, client_id: u16, amount: i64) -> LedgerResult<()>{
         let mut a = self.get_account(client_id).await?;
         if a.is_locked() {
             return account_err("account is locked");
@@ -53,7 +53,7 @@ impl AccountRepository for LedgerAccountRepository {
         a.hold(amount);
         self.update_account(client_id, a).await
     }
-    async fn release(&mut self, client_id: u16, amount: f32) -> LedgerResult<()>{
+    async fn release(&mut self, client_id: u16, amount: i64) -> LedgerResult<()>{
         let mut a = self.get_account(client_id).await?;
         if a.is_locked() {
             return account_err("account is locked");
@@ -62,7 +62,7 @@ impl AccountRepository for LedgerAccountRepository {
         a.release(amount);
         self.update_account(client_id, a).await
     }
-    async fn deposit(&mut self, client_id: u16, amount: f32) -> LedgerResult<()>{
+    async fn deposit(&mut self, client_id: u16, amount: i64) -> LedgerResult<()>{
         let mut a = self.get_account(client_id).await?;
         if a.is_locked() {
             return account_err("account is locked");
@@ -71,7 +71,7 @@ impl AccountRepository for LedgerAccountRepository {
         a.deposit(amount);
         self.update_account(client_id, a).await
     }
-    async fn withdraw(&mut self, client_id: u16, amount: f32) -> LedgerResult<()>{
+    async fn withdraw(&mut self, client_id: u16, amount: i64) -> LedgerResult<()>{
         let mut a = self.get_account(client_id).await?;
         if a.is_locked() {
             return account_err("account is locked");
@@ -84,7 +84,7 @@ impl AccountRepository for LedgerAccountRepository {
         a.withdraw(amount);
         self.update_account(client_id, a).await
     }
-    async fn withdraw_and_lock(&mut self, client_id: u16, amount: f32) -> LedgerResult<()>{
+    async fn withdraw_and_lock(&mut self, client_id: u16, amount: i64) -> LedgerResult<()>{
         let mut a = self.get_account(client_id).await?;
         if a.is_locked() {
             return account_err("account is locked");
