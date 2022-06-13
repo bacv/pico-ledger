@@ -1,4 +1,4 @@
-use crate::{LedgerResult, Tx, BookingService, AccountService, AccountSummary};
+use crate::{LedgerResult, Tx, BookingService, AccountService, Account};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -6,14 +6,14 @@ use async_trait::async_trait;
 use super::repository::{BookingRepository, AccountRepository};
 
 pub struct Ledger {
-    account_repo: Arc<dyn AccountRepository + Send + Sync>,
-    booking_repo: Arc<dyn BookingRepository + Send + Sync>
+    account_repo: Arc<dyn AccountRepository>,
+    booking_repo: Arc<dyn BookingRepository>
 }
 
 #[async_trait]
 impl AccountService for Ledger {
-    async fn get_account_summary(&self, client_id: u16) -> LedgerResult<AccountSummary> {
-        self.account_repo.get_account_summary(client_id).await
+    async fn dump_accounts(&self) -> LedgerResult<Vec<Account>> {
+        self.account_repo.dump_accounts().await
     }
 }
 
