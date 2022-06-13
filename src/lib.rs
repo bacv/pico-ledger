@@ -3,27 +3,34 @@ use async_trait::async_trait;
 mod app;
 mod repo;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Account {
-    _id: u16,
+    id: u16,
     available: f32,
     held: f32,
-    total: f32,
     locked: bool,
 }
 
 impl Account {
     pub fn new(client_id: u16) -> Self {
         Self {
-            _id: client_id,
+            id: client_id,
             available: 0.0,
             held: 0.0,
-            total: 0.0,
             locked: false,
         }
     }
     pub fn is_locked(&self) -> bool {
         return self.locked
+    }
+    pub fn get_client_id(&self) -> u16 {
+        return self.id
+    }
+    pub fn get_available(&self) -> f32 {
+        return self.available
+    }
+    pub fn get_total(&self) -> f32 {
+        return self.available + self.held
     }
     pub fn hold(&mut self, amount: f32) {
         self.available -= amount;
@@ -35,16 +42,34 @@ impl Account {
     }
     pub fn deposit(&mut self, amount: f32) {
         self.available += amount;
-        self.total += amount;
     }
     pub fn withdraw(&mut self, amount: f32) {
         self.available -= amount;
-        self.total -= amount;
     }
     pub fn withdraw_and_lock(&mut self, amount: f32) {
         self.held -= amount;
-        self.total -= amount;
         self.locked = true;
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct AccountSummary {
+    pub client: u16,
+    pub available: f32,
+    pub held: f32,
+    pub total: f32,
+    pub locked: bool,
+}
+
+impl From<&Account> for AccountSummary {
+    fn from(a: &Account) -> Self {
+        AccountSummary{
+            client: a.id,
+            available: a.available,
+            held: a.held,
+            total: a.available + a.held,
+            locked: a.locked,
+        } 
     }
 }
 
@@ -115,12 +140,12 @@ pub struct Tx {
     pub tx_id: u32,
     pub client_id: u16,
     pub tx_type: TxType,
-    pub amount: f32,
+    pub amount: Option<f32>,
 }
 
 #[async_trait]
 pub trait AccountService {
-    async fn dump_accounts(&self) -> LedgerResult<Vec<Account>>;
+    async fn dump_accounts(&self) -> LedgerResult<Vec<AccountSummary>>;
 }
 
 #[async_trait]
@@ -128,6 +153,7 @@ pub trait BookingService {
     async fn process_tx(&self, tx: Tx) -> LedgerResult<()>;
 }
 
+#[derive(Debug)]
 pub enum LedgerErrorKind {
     DoesNotExist(String),
     RepositoryError(String),
@@ -142,6 +168,7 @@ impl LedgerErrorKind {
     }
 }
 
+#[derive(Debug)]
 pub struct LedgerError {
     pub kind: LedgerErrorKind,
 }
