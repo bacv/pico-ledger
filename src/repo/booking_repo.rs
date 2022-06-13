@@ -1,21 +1,21 @@
+use crate::dom::LedgerResult;
 use std::{sync::Arc, collections::HashMap};
 
 use async_trait::async_trait;
 use futures::lock::Mutex;
 
-use crate::{app::{AccountRepository}, TxType, Tx, LedgerError, BookingState};
-use crate::Booking;
-use crate::LedgerResult;
+use crate::{app::{AccountRepository}, dom::{TxType, Tx, LedgerError, BookingState}};
+use crate::dom::Booking;
 use crate::app::BookingRepository;
 
-pub struct LedgerBookingRepository {
+pub struct InMemoryBookingRepository {
     account_repo: Arc<Mutex<dyn AccountRepository>>,
     bookings: Mutex<HashMap<u32, Booking>>,
 }
 
-impl LedgerBookingRepository {
+impl InMemoryBookingRepository {
     pub fn new(account_repo: Arc<Mutex<dyn AccountRepository>>) -> Self {
-        Self{
+        InMemoryBookingRepository{
             account_repo,
             bookings: Mutex::new(HashMap::default()),
         }
@@ -41,7 +41,7 @@ impl LedgerBookingRepository {
 }
 
 #[async_trait]
-impl BookingRepository for LedgerBookingRepository {
+impl BookingRepository for InMemoryBookingRepository {
     async fn process_tx(&mut self, tx: Tx) -> LedgerResult<()> {
         // Check if account exists, if not create a new one.
         let account = self.account_repo.lock().await
@@ -132,9 +132,9 @@ fn wrapped_booking_err(msg: &str) -> Result<(), LedgerError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::repo::account_repo::InMemoryAccountRepository;
+    use crate::dom::AccountSummary;
     use std::cmp::Ordering;
-use crate::AccountSummary;
-    use crate::repo::account_repo::LedgerAccountRepository;
     use super::*;
 
     struct TestCase {
@@ -274,9 +274,9 @@ use crate::AccountSummary;
         }
     }
 
-    fn new_booking_account_repo_pair() -> (LedgerBookingRepository, Arc<Mutex<LedgerAccountRepository>>) {
-        let account_repo = Arc::new(Mutex::new(LedgerAccountRepository::new()));
-        (LedgerBookingRepository::new(account_repo.clone()), account_repo)
+    fn new_booking_account_repo_pair() -> (InMemoryBookingRepository, Arc<Mutex<InMemoryAccountRepository>>) {
+        let account_repo = Arc::new(Mutex::new(InMemoryAccountRepository::new()));
+        (InMemoryBookingRepository::new(account_repo.clone()), account_repo)
     }
 
     #[tokio::test]

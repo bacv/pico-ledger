@@ -1,18 +1,17 @@
-use crate::AccountSummary;
 use std::collections::HashMap;
 
 use async_trait::async_trait;
 use futures::lock::Mutex;
 
-use crate::{app::{AccountRepository}, LedgerResult, Account, LedgerError};
+use crate::{app::{AccountRepository}, dom::{LedgerResult, Account, LedgerError, AccountSummary}};
 
-pub struct LedgerAccountRepository {
+pub struct InMemoryAccountRepository {
     accounts: Mutex<HashMap<u16, Account>>
 }
 
-impl LedgerAccountRepository {
+impl InMemoryAccountRepository {
     pub fn new() -> Self {
-        Self {
+        InMemoryAccountRepository {
             accounts: Mutex::new(HashMap::default()),
         }
     }
@@ -30,7 +29,7 @@ impl LedgerAccountRepository {
 }
 
 #[async_trait]
-impl AccountRepository for LedgerAccountRepository {
+impl AccountRepository for InMemoryAccountRepository {
     async fn get_or_create_account(&mut self, client_id: u16) -> LedgerResult<Account>{
         let mut store = self.accounts.lock().await;
         let a = match store.get(&client_id) {

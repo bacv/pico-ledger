@@ -1,6 +1,5 @@
-use crate::AccountSummary;
-use crate::{Tx, LedgerResult, Account};
 use async_trait::async_trait;
+use crate::dom::{AccountSummary, Account, LedgerResult, Tx};
 
 #[async_trait]
 pub trait AccountRepository: Send + Sync {

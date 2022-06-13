@@ -1,5 +1,4 @@
-use crate::AccountSummary;
-use crate::{LedgerResult, Tx, BookingService, AccountService};
+use crate::dom::{AccountSummary, LedgerResult, Tx, BookingService, AccountService};
 use std::sync::Arc;
 
 use async_trait::async_trait;
