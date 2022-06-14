@@ -10,9 +10,10 @@ Application uses stderr to print errors if they happen inside the app or reposit
 CSV parsing error should make application panic.
 
 ## Assumptions that were made
-Assuming that a chargeback can make the account negative.
-Assuming that negative amount in a transaction is not allowed.
-Assuming that withdrawal can't be disputed.
+* Assuming that a chargeback can make the account negative.
+* Assuming that negative amount in a transaction is not allowed.
+* Assuming that withdrawal can't be disputed.
+* An amount with more that four decimal points will be trimmed to four decimal points without any rounding.
 
 ## Project's structure
 Domain related structures and traits are defined in `dom/` folder. Ideally domain layer should not use any references from app and implementation layers.

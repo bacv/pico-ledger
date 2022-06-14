@@ -5,19 +5,18 @@ use futures::lock::Mutex;
 
 use crate::{app::{AccountRepository}, dom::{LedgerResult, Account, LedgerError, AccountSummary}};
 
+#[derive(Default)]
 pub struct InMemoryAccountRepository {
     accounts: Mutex<HashMap<u16, Account>>
 }
 
 impl InMemoryAccountRepository {
     pub fn new() -> Self {
-        InMemoryAccountRepository {
-            accounts: Mutex::new(HashMap::default()),
-        }
+        InMemoryAccountRepository::default()
     }
     async fn get_account(&self, client_id: u16) -> LedgerResult<Account> {
-        let a = self.accounts.lock().await.get(&client_id)
-            .ok_or_else(|| LedgerError::doesnt_exist("account does not exist"))?.clone();
+        let a = *self.accounts.lock().await.get(&client_id)
+            .ok_or_else(|| LedgerError::doesnt_exist("account does not exist"))?;
 
         Ok(a)
     }

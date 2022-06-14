@@ -14,6 +14,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ledger = Arc::new(Ledger::new(account_repo, booking_repo));
 
+    if args.len() != 2 {
+        return Err("Command needs a tx file as a first parameter".into());
+    }
+
     let path = args[1].clone();
     let file = File::open(path)?;
 
@@ -44,3 +48,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     wtr.flush()?;
     Ok(())
 }
+
